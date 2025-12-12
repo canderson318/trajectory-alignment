@@ -1,0 +1,25 @@
+name: traj-alignment
+channels:
+  - conda-forge
+  - defaults
+dependencies:
+  - ipython
+  - ipykernel
+  - ipywidgets
+  - jupyterlab
+  - jupyter_contrib_nbextensions
+  - jupytext
+  - matplotlib
+  - nodejs
+  - pandas
+  - pandoc
+  - pip
+  - pre-commit
+  - python
+  - pyyaml
+  - rpy2
+  - scipy
+  - seaborn
+  - scikit-learn
+  - statsmodels
+  - tqdm
