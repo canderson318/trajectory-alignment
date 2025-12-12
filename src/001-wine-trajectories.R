@@ -1,9 +1,15 @@
 
+
 rm(list = ls()); gc()
 
 pacman::p_load(readr, dplyr, snakecase, magrittr, ggplot2, patchwork, slingshot, SingleCellExperiment, TrajectoryUtils, scater, SummarizedExperiment, tidyr, tibble, stringr)
 
-setwd("~/Documents/personal/R stuff/traj-alignment/")
+wd <- "~/Documents/personal/R stuff/traj-alignment/"
+setwd(wd)
+
+# make raw-data directory 
+"raw-data" %>% 
+  {if(!dir.exists(.)) dir.create(.)}
 
 # system("curl https://archive.ics.uci.edu/static/public/109/wine.zip --output wine.zip")
 # system("ls")
@@ -57,7 +63,7 @@ ab_pcs <- ggplot(x, aes(PC1, PC2, color = wine[,1, drop = TRUE] %>% factor()))+
   theme(aspect.ratio = 1)+
   ggtitle("Dataset AB")
 
-ggsave("~/Documents/personal/R stuff/traj-alignment/results/whole-dataset-points.png", ab_pcs, height = 8, width = 8)
+ggsave(sprintf("%s/results/whole-dataset-points.png", wd), ab_pcs, height = 8, width = 8)
 
 s <- 10
 set.seed(18)
@@ -118,7 +124,7 @@ b <- ggplot(xb, aes(PC1, PC2))+
   theme(aspect.ratio = 1)+
   scale_color_hue()
 
-ggsave("~/Documents/personal/R stuff/traj-alignment/results/Trajectories-points.png", a/b, height = 8, width = 4)
+ggsave(sprintf("%s/results/Trajectories-points.png", wd), a/b, height = 8, width = 4)
 
  calc.slingshot <- function(X, groups, components= NA){
   if(is.na(components)) components = ncol(X)
@@ -190,7 +196,7 @@ b_traj <- b_traj+
 
 a_traj/b_traj 
 
-ggsave("~/Documents/personal/R stuff/traj-alignment/results/Trajectories-points-w-traj-no-ellipse.png", a_traj/b_traj , height = 8, width = 4)
+ggsave(sprintf("%s/results/Trajectories-points-w-traj-no-ellipse.png", wd), a_traj/b_traj , height = 8, width = 4)
 
 
 # TRAJECTORY ALIGNMENT %>% %>% %>% %>% %>% %>% %>% %>% %>% %>% %>% %>% %>% 
@@ -231,10 +237,10 @@ b_to_a_traj_points_ellipses <- ggplot()+
   
   ggnewscale::new_scale_color()+
 
-  geom_path(data =X_d %>% mutate(lineage = "reference"),      aes(PC1, PC2, color = lineage),
+  geom_path(data =X_d %>% mutate(lineage = "reference"),      aes(PC1, PC2, color = lineage), # nolint: line_length_linter.
             linewidth = 2, alpha = .5)+
   
-  geom_path(data = Y_matched %>% mutate(lineage = "aligned"), aes(aligned_1, aligned_2, color = lineage),
+  geom_path(data = Y_matched %>% mutate(lineage = "aligned"), aes(aligned_1, aligned_2, color = lineage), # nolint
             linewidth = 2, alpha = .5)+
 
   scale_color_hue()+
