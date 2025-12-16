@@ -239,7 +239,9 @@ Y <- obj$traj$curve_dfs$b[,cols] %>% as.matrix()
 # obj$procrust <- procrust
 # (proc_test <- vegan::protest(X, Y))
 
-
+my_procrustes <- function(X,Y){
+  
+}
 
 #\\\\
 #\\\\
