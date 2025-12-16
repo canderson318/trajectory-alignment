@@ -1,19 +1,31 @@
-
-
+#\\\
+#\\\
+# Set up
+#\\\
+#\\\
 rm(list = ls()); gc()
 
 pacman::p_load(readr, dplyr, snakecase, magrittr, ggplot2, patchwork, slingshot, SingleCellExperiment, TrajectoryUtils, scater, SummarizedExperiment, tidyr, tibble, stringr, install = F)
 
 library(myPackage)
 
-wd <- "/projects/canderson2@xsede.org/trajectory-alignment"
-writeLines(wd, '.wd.txt')
+# wd <- "/projects/canderson2@xsede.org/trajectory-alignment"
+# wd <- "/Users/canderson/trajectory-alignment"
+# writeLines(wd, '~/.wd.txt')
 
+wd <- readLines('~/.wd.txt')
 setwd(wd)
+wd
 
 tmp_plot  <-  function( path = sprintf("%s/results/temp-plot.png", wd), ...){
   temp_plot(path = path, ...)
 }
+
+#\\\
+#\\\
+# Download Data
+#\\\
+#\\\
 
 # make raw-data directory 
 "raw-data" %>% 
@@ -29,33 +41,34 @@ if(!file.exists('raw-data/wine.data')){
 system("cat raw-data/wine.data")
 system("cat raw-data/wine.names")
 
+#\\\
+#\\\
+# Load Data
+#\\\
+#\\\
 
-nms <- c("class",
-  "Alcohol",
-  "Malic acid",
-  "Ash",
-  "Alcalinity of ash",
-  "Magnesium",
-  "Total phenols",
-  "Flavanoids",
-  "Nonflavanoid phenols",
-  "Proanthocyanins",
-  "Color intensity",
-  "Hue",
-  "OD280/OD315 of diluted wines",
-"Proline") %>%
-  snakecase::to_snake_case()
-
+nms <- snakecase::to_snake_case(c("class","Alcohol","Malic acid","Ash","Alcalinity of ash","Magnesium","Total phenols","Flavanoids","Nonflavanoid phenols","Proanthocyanins","Color intensity","Hue","OD280/OD315 of diluted wines","Proline"))
 wine <- read_csv("raw-data/wine.data", col_names = nms)
-
 wine$class <- c("A", "B", "C")[wine$class]
 
+
+#\\\
+#\\\
+# Scale Data
+#\\\
+#\\\
 
 scaled <- scale(wine[,-1])
 scaled <- cbind(wine[,1], scaled)
 
+# make data object to store all objects
 obj <- list(data = list(orig = wine, scaled = scaled), reducedDims = list(pcs = NA))
 
+#\\\
+#\\\
+# Calculate PCs on whole dataset
+#\\\
+#\\\
 calc.pcs <- function(X){
   z <- prcomp(X)
   txtplot::txtplot(z$sdev^2 %>% {(./sum(.))*100})
@@ -74,11 +87,14 @@ ab_pcs <- ggplot(x, aes(PC1, PC2, color = wine[,1, drop = TRUE] %>% factor()))+
   theme(aspect.ratio = 1)+
   ggtitle("Dataset AB")
 
-ggsave(sprintf("%s/results/whole-dataset-points.png", wd), ab_pcs, height = 8, width = 8)
 
-s <- 10
+# \\\
+# \\\
+# Partition Data
+# \\\
+# \\\
+
 set.seed(18)
-
 # # subset columnwise
 # a_cols <- sample(2:14, floor(14/2))
 # b_cols <- setdiff(2:14, a_cols)
@@ -104,56 +120,37 @@ obj$data$idx <- list(a = list(rows = a_rows, columns = a_cols),
                      b = list(rows = b_rows, columns = b_cols)
                      )
 
+# \\\
+# \\\
+# Calculate Reduced Dims on Partitioned Datasets
+# \\\
+# \\\
 obj$reducedDims$pcs <- list(a = calc.pcs(obj$data$a),
                             b = calc.pcs(obj$data$b )
                             )
 
-xa <- obj$reducedDims$pcs$a%>%
-  bind_cols(class= obj$data$scaled[a_rows,1]) %>% 
-  data.frame() %>%
-  distinct()
-a <- ggplot(xa, aes(PC1, PC2))+
-  stat_ellipse(type = "norm", alpha = .5, level = .95)+
-  # geom_point(aes(color =class %>% factor()), size = 1, alpha = .6)+
-  geom_point(size = .8, alpha = .6)+
-  theme_bw()+
-  labs(color = "class")+
-  scale_color_hue()+
-  theme(aspect.ratio = 1)+
-  ggtitle("Trajectories X and Y")
-
-xb <- obj$reducedDims$pcs$b%>%
-  bind_cols(class= obj$data$scaled[b_rows,1]) %>% 
-  data.frame() %>%
-  distinct()
-b <- ggplot(xb, aes(PC1, PC2))+
-  stat_ellipse(type = "norm", alpha = .5, level = .95)+
-  # geom_point(aes(color =class %>% factor()), size = 1, alpha = .6)+
-  geom_point(size = .8, alpha = .6)+
-  labs(color = "class")+
-  theme_bw()+
-  theme(aspect.ratio = 1)+
-  scale_color_hue()
-
-ggsave(sprintf("%s/results/Trajectories-points.png", wd), a/b, height = 8, width = 4)
-
- calc.slingshot <- function(X, groups, components= NA){
+# \\\
+# \\\
+# Run Slingshot on each dataset
+# \\\
+# \\\
+calc.slingshot <- function(X, groups, components= NA){
   if(is.na(components)) components = ncol(X)
   slingshot::slingshot(data = X[,1:components], 
-                       clusterLabels = groups, 
-                       omega = FALSE, 
-                       use.median = T, 
-                       approx_points = 10,
-                       start.clus = "A"
-                       )
+                        clusterLabels = groups, 
+                        omega = FALSE, 
+                        use.median = FALSE, 
+                        approx_points = 10,
+                        start.clus = "A"
+                        )
 }
 
-components = NA
+components = NA # number of pcs to use, otherwise uses all
 obj$traj <- list(a = calc.slingshot(obj$reducedDims$pcs$a, obj$data$orig$class[a_rows], components =components),
                  b =  calc.slingshot(obj$reducedDims$pcs$b, obj$data$orig$class[b_rows], components =components)
                  )
 
-
+# get curves from slingshot objects
 obj$traj$curves$a <- getCurves(obj$traj$a)
 obj$traj$curves$b <- getCurves(obj$traj$b)
 
@@ -177,89 +174,84 @@ obj$traj$curve_dfs <- list(a = get.curve.df(obj$traj$curves$a),
                            b = get.curve.df(obj$traj$curves$b)
                            )
 
-
-# a_traj <- a+
-#   geom_path(data = obj$traj$curve_dfs$a, aes(PC1, PC2, color = lineage),fill = NA, color = "orange", linewidth = , alpha = 1)
-# 
-# b_traj <- b+
-#   geom_path(data = obj$traj$curve_dfs$b, aes(PC1, PC2, color = lineage), fill = NA,color = "orange", linewidth = .7, alpha = 1)
-# ggsave("results/Trajectories-points-w-traj.png", a_traj/b_traj , height = 8, width = 4)
+# \\\
+# \\\
+# Plot Trajectories
+# \\\
+# \\\
 gg_color_hue <- function(n) {
   hues = seq(15, 375, length = n + 1)
   hcl(h = hues, l = 65, c = 100)[1:n]
 }
 
-a_traj <- a
-a_traj$layers <- Filter(function(x) !"StatEllipse" %in% class(x$stat), a$layers)
 
-b_traj <- b
-b_traj$layers <- Filter(function(x) !"StatEllipse" %in% class(x$stat), b$layers)
+xa <- obj$reducedDims$pcs$a%>%
+  bind_cols(class= obj$data$scaled[a_rows,1]) %>% 
+  data.frame() %>%
+  distinct()
 
+xb <- obj$reducedDims$pcs$b%>%
+  bind_cols(class= obj$data$scaled[b_rows,1]) %>% 
+  data.frame() %>%
+  distinct()
 
-a_traj <- a_traj+
-  geom_path(data = obj$traj$curve_dfs$a, aes(PC1, PC2, color = lineage),fill = NA, color = gg_color_hue(4)[3], linewidth = 1, alpha = .9)+
+a_traj <- ggplot(xa, aes(PC1, PC2))+
+  geom_point(aes(color =class %>% factor()), 
+    size = 1, alpha = .6)+
+  theme_bw()+
+  geom_path(data = obj$traj$curve_dfs$a, 
+    aes(PC1, PC2, color = lineage),
+    color = gg_color_hue(4)[3], linewidth = 1, alpha = .9)+
+  labs(color = "class")+
+  scale_color_hue()+
+  theme(aspect.ratio = 1)+
+  ggtitle("Trajectories X and Y")
+
+b_traj <- ggplot(xb, aes(PC1, PC2))+
+  geom_point(aes(color =class %>% factor()), size = 1, alpha = .6)+
+  geom_path(data = obj$traj$curve_dfs$b, 
+    aes(PC1, PC2, color = lineage), 
+    color = gg_color_hue(4)[1], linewidth = 1, alpha = .9)+
+  labs(color = "class")+
+  theme_bw()+
+  theme(aspect.ratio = 1)+
+  scale_color_hue()
+
   
-  labs(color = "")
-
-b_traj <- b_traj+
-  geom_path(data = obj$traj$curve_dfs$b, aes(PC1, PC2, color = lineage), fill = NA,color = gg_color_hue(4)[1], linewidth = 1, alpha = .9)+
-  labs(color = "")
-
 (a_traj/b_traj) %>% tmp_plot( plot = .)
 
-ggsave(sprintf("%s/results/Trajectories-points-w-traj-no-ellipse.png", wd), a_traj/b_traj , height = 8, width = 4)
+# \\\
+# \\\
+# Align trajectories with Procrustes
+# \\\
+# \\\
 
-
-# TRAJECTORY ALIGNMENT %>% %>% %>% %>% %>% %>% %>% %>% %>% %>% %>% %>% %>% 
-cols <- seq(2,  do.call(min, lapply(obj$traj$curve_dfs, ncol)) )
+cols <- seq(2,  do.call(min, lapply(obj$traj$curve_dfs, ncol)) ) # exclude 'lineage' at [1]
 # cols <- cols[1:2]
 
 X <- obj$traj$curve_dfs$a[,cols] %>% as.matrix() 
 Y <- obj$traj$curve_dfs$b[,cols] %>% as.matrix()
 
-procrust <- vegan::procrustes(X = X, Y = Y)
-Y_aligned <- procrust$Yrot
+# # Vegan implementation
+# procrust <- vegan::procrustes(X = X, Y = Y)
+# Y_aligned <- procrust$Yrot
 
-obj$procrust <- procrust
-(proc_test <- vegan::protest(X, Y))
-
-
-(rmsd = sqrt(mean((procrust$X- Y_aligned)^2)))
+# obj$procrust <- procrust
+# (proc_test <- vegan::protest(X, Y))
 
 
-# VISUALIZE %>% %>% %>% %>% 
+
+#\\\\
+#\\\\
+# VISUALIZE Alignment
+#\\\\
+#\\\\
 
 X_d <- as.data.frame(X)
 Y_matched <- as.data.frame(Y_aligned )
 
 colnames(Y_matched) <- paste0("aligned_", cols-1)
 
-b_to_a_traj_points_ellipses <- ggplot()+
-
-  geom_point(data = obj$reducedDims$pcs$a %>% bind_cols(class_a = obj$data$orig$class[a_rows]) ,aes(PC1, PC2, color = class_a), alpha = .3)+
-  stat_ellipse(data = obj$reducedDims$pcs$a %>% bind_cols(class_a = obj$data$orig$class[a_rows]) ,
-             aes(PC1, PC2, color = class_a))+
-  scale_color_viridis_d(option = "plasma")+
-  
-  ggnewscale::new_scale_color()+
-
-  geom_point(data = obj$reducedDims$pcs$b %>% bind_cols(class_b = obj$data$orig$class[b_rows]) ,aes(PC1, PC2, color = class_b), alpha = .3)+
-  stat_ellipse(data = obj$reducedDims$pcs$b %>% bind_cols(class_b = obj$data$orig$class[b_rows]) ,aes(PC1, PC2, color = class_b))+
-  
-  ggnewscale::new_scale_color()+
-
-  geom_path(data =X_d %>% mutate(lineage = "reference"),      aes(PC1, PC2, color = lineage), # nolint: line_length_linter.
-            linewidth = 2, alpha = .5)+
-  
-  geom_path(data = Y_matched %>% mutate(lineage = "aligned"), aes(aligned_1, aligned_2, color = lineage), # nolint
-            linewidth = 2, alpha = .5)+
-
-  scale_color_hue()+
-  ggtitle("Trajectory Y aligned to X with points")+
-  theme_bw()
-
-
-ggsave("results/b-to-a-traj-points-ellpises.png", b_to_a_traj_points_ellipses , height = 8, width = 8)
 
 b_to_a_traj_points <- ggplot()+
 
@@ -281,67 +273,9 @@ b_to_a_traj_points <- ggplot()+
   ggtitle("Trajectory Y aligned to X with points")+
   theme_bw()
 
-ggsave("results/b-to-a-traj-points-ellpises.png", b_to_a_traj_points_ellipses , height = 8, width = 8)
-
-b_to_a_points_ellipses <- ggplot()+
-
-  geom_point(data = obj$reducedDims$pcs$a %>% bind_cols(class_a = obj$data$orig$class[a_rows]) ,aes(PC1, PC2, color = class_a), alpha = .3)+
-  stat_ellipse(data = obj$reducedDims$pcs$a %>% bind_cols(class_a = obj$data$orig$class[a_rows]) ,
-             aes(PC1, PC2, color = class_a), linewidth = 2)+
-  scale_color_viridis_d(option = "plasma")+
-  
-  ggnewscale::new_scale_color()+
-
-  geom_point(data = obj$reducedDims$pcs$b %>% bind_cols(class_b = obj$data$orig$class[b_rows]) ,aes(PC1, PC2, color = class_b), alpha = .3)+
-  stat_ellipse(data = obj$reducedDims$pcs$b %>% bind_cols(class_b = obj$data$orig$class[b_rows]) ,aes(PC1, PC2, color = class_b), linewidth = 2)+
-  ggtitle("Trajectory Y aligned to X with points")+
-  theme_bw()
-
-ggsave("results/b-to-a-points-ellpises.png", b_to_a_points_ellipses , height = 8, width = 8)
+b_to_a_traj_points %>% tmp_plot(plot = .)
 
 
-b_to_a_traj_ellipses <- ggplot()+
-
-  # geom_point(data = obj$reducedDims$pcs$a %>% bind_cols(class_a = obj$data$orig$class[a_rows]) ,aes(PC1, PC2, color = class_a), alpha = .3)+
-  stat_ellipse(data = obj$reducedDims$pcs$a %>% bind_cols(class_a = obj$data$orig$class[a_rows]) ,
-             aes(PC1, PC2, color = class_a))+
-  scale_color_viridis_d(option = "plasma")+
-  
-  ggnewscale::new_scale_color()+
-
-  # geom_point(data = obj$reducedDims$pcs$b %>% bind_cols(class_b = obj$data$orig$class[b_rows]) ,aes(PC1, PC2, color = class_b), alpha = .3)+
-  stat_ellipse(data = obj$reducedDims$pcs$b %>% bind_cols(class_b = obj$data$orig$class[b_rows]) ,aes(PC1, PC2, color = class_b))+
-  
-  ggnewscale::new_scale_color()+
-
-  geom_path(data =X_d %>% mutate(lineage = "reference"),      aes(PC1, PC2, color = lineage),
-            linewidth = 2, alpha = .5)+
-  
-  geom_path(data = Y_matched %>% mutate(lineage = "aligned"), aes(aligned_1, aligned_2, color = lineage),
-            linewidth = 2, alpha = .5)+
-
-  scale_color_hue()+
-  ggtitle("Trajectory Y aligned to X with point ellipses")+
-  theme_bw()
-
-ggsave("results/b-to-a-traj-ellpises.png", b_to_a_traj_ellipses , height = 8, width = 8)
-
-
-b_to_a_ellipses <- ggplot()+
-
-  # geom_point(data = obj$reducedDims$pcs$a %>% bind_cols(class_a = obj$data$orig$class[a_rows]) ,aes(PC1, PC2, color = class_a), alpha = .3)+
-  stat_ellipse(data = obj$reducedDims$pcs$a %>% bind_cols(class_a = obj$data$orig$class[a_rows]) ,
-             aes(PC1, PC2, color = class_a))+
-  scale_color_viridis_d(option = "plasma")+
-  
-  ggnewscale::new_scale_color()+
-
-  stat_ellipse(data = obj$reducedDims$pcs$b %>% bind_cols(class_b = obj$data$orig$class[b_rows]) ,aes(PC1, PC2, color = class_b))+
-  
-  ggtitle("Y aligned to X")+
-  theme_bw()
-
-ggsave("results/b-to-a-ellpises.png", b_to_a_ellipses , height = 8, width = 8)
 
 b_to_a_traj <- ggplot()+
   
@@ -374,15 +308,10 @@ b_to_a_traj <- ggplot()+
     )
   )) +
   theme_bw()
-
-
-ggsave("results/b-to-a-traj.png", b_to_a_traj , height = 8, width = 8)
+b_to_a_traj%>% tmp_plot(plot = .)
 
 p <- (a_traj/b_traj )|(b_to_a_traj+theme(aspect.ratio = 1))
-ggsave("results/grfp-fig.pdf", p, height = 5, width = 10)
+
+p%>% tmp_plot(plot = .)
 
 
-"processed-data" %>% 
-  {if(! dir.exists(.)) dir.create(.)}
-
-# qs::qsave(obj,"processed-data/obj001.qs")
