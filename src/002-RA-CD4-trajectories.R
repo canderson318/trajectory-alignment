@@ -7,8 +7,8 @@ pacman::p_load(readr, dplyr, snakecase, magrittr, ggplot2, patchwork, slingshot,
 setwd("~/Documents/personal/R stuff/traj-alignment/")
 
 
-# download data
-if(FALSE)"curl https://covid19.cog.sanger.ac.uk/submissions/release2/meyer_nikolic_covid_pbmc_raw.h5ad --output raw-data/meyer_nikolic_covid_pbmc_raw.h5ad" %>% system()
+# # download data
+# if(FALSE)"curl https://covid19.cog.sanger.ac.uk/submissions/release2/meyer_nikolic_covid_pbmc_raw.h5ad --output raw-data/meyer_nikolic_covid_pbmc_raw.h5ad" %>% system()
 
 
 # load data
