@@ -1,3 +1,4 @@
 raw-data/*
 processed-data/*
 .wd.txt
+logs/*

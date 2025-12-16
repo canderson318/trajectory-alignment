@@ -4,13 +4,14 @@
 #\\\
 #\\\
 
-'logs' %>% {if(!dir.exists(.)) dir.create(.)}
+if(!dir.exists('logs')) dir.create('logs')
+
 if(FALSE&FALSE){
 
 slurm_cmd <- "#!/bin/bash
 
 #SBATCH --partition=amilan
-#SBATCH --ntasks=10
+#SBATCH --ntasks=5
 #SBATCH --time=03:00:00
 #SBATCH --nodes=1
 #SBATCH --qos=normal
@@ -18,7 +19,7 @@ slurm_cmd <- "#!/bin/bash
 #SBATCH --job-name=001-job
 
 #SBATCH --output=/projects/canderson2@xsede.org/trajectory-alignment/logs/001-slurm-%j.out
-#SBATCH --error =/projects/canderson2@xsede.org/trajectory-alignment/logs/001-slurm-%j.err
+#SBATCH --error=/projects/canderson2@xsede.org/trajectory-alignment/logs/001-slurm-%j.err
 
 #SBATCH --mail-type=ALL
 #SBATCH --mail-user=christian.anderson@cuanschutz.edu

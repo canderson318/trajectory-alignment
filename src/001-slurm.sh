@@ -1,7 +1,7 @@
 #!/bin/bash
 
 #SBATCH --partition=amilan
-#SBATCH --ntasks=10
+#SBATCH --ntasks=2
 #SBATCH --time=03:00:00
 #SBATCH --nodes=1
 #SBATCH --qos=normal
@@ -9,7 +9,7 @@
 #SBATCH --job-name=001-job
 
 #SBATCH --output=/projects/canderson2@xsede.org/trajectory-alignment/logs/001-slurm-%j.out
-#SBATCH --error =/projects/canderson2@xsede.org/trajectory-alignment/logs/001-slurm-%j.err
+#SBATCH --error=/projects/canderson2@xsede.org/trajectory-alignment/logs/001-slurm-%j.err
 
 #SBATCH --mail-type=ALL
 #SBATCH --mail-user=christian.anderson@cuanschutz.edu
