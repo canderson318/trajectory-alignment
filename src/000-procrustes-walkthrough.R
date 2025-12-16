@@ -231,6 +231,46 @@ cols <- seq(2,  do.call(min, lapply(obj$traj$curve_dfs, ncol)) ) # exclude 'line
 
 X <- obj$traj$curve_dfs$a[,cols] %>% as.matrix() 
 Y <- obj$traj$curve_dfs$b[,cols] %>% as.matrix()
+# \\\
+# \\\
+# Resample Curves if dims don't match
+# \\\
+# \\\
+
+curve = X 
+resample_curve <- function(curve, minRowDim){
+  
+  # cumulative arc length
+  diffs <- curve[-1, , drop = FALSE] - curve[-nrow(curve), , drop = FALSE]
+
+  # segment length = rowise euclidean norm
+  seglen  <- sqrt(rowSums(diffs^2))
+
+  s = c(0, cumsum(seglen))
+
+  # normalize to [0, 1]
+  s = s/s[length(s)]
+
+  # target positions
+  s_new = seq(0, 1, length.out = minRowDim)
+
+  # interpolate each dimension
+  curve_interp  <- vapply(
+    seq_len(ncol(curve)),
+    function(d) approx(x = s, y = curve[, d], xout = s_new)$y,
+    numeric(length(s_new))
+  ) %>% 
+  as.matrix()
+  
+  return(curve_interp)
+}
+
+if(nrow(X)!=nrow(Y)){
+  minRowDim = min(nrow(X), nrow(Y))
+  X_new = resample_curve(X, minRowDim)
+  Y_new = resample_curve(Y, minRowDim)
+}
+
 
 # # Vegan implementation
 # procrust <- vegan::procrustes(X = X, Y = Y)
@@ -239,12 +279,14 @@ Y <- obj$traj$curve_dfs$b[,cols] %>% as.matrix()
 # obj$procrust <- procrust
 # (proc_test <- vegan::protest(X, Y))
 
+
+
 my_procrustes <- function(X,Y){
 
 }
 
 
-
+nrow(X)
 
 #\\\\
 #\\\\
