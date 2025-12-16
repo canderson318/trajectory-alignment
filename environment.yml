@@ -2,7 +2,7 @@ name: traj-alignment
 channels:
   - conda-forge
 dependencies:
-  - python=3.12
+  - python #=3.12
 
   # Jupyter stack
   - ipython
@@ -13,7 +13,7 @@ dependencies:
   - pandoc
 
   # Scientific Python
-  - numpy >=2,<2.3.0
+  - numpy #>=2,<2.3.0
   - pandas
   - scipy
   - scikit-learn
@@ -21,14 +21,14 @@ dependencies:
   - matplotlib
   - seaborn
   - tqdm
+  
+  # Single cell
+  - anndata
+  - scanpy
 
   # Dev / workflow
-  - pre-commit
   - pyyaml
   - pip
-
-  # Interop
-  - rpy2
 
   # Optional (only if needed)
   - nodejs
