@@ -36,6 +36,7 @@ os.chdir(pth.home() / 'traj-alignment')
 
 # %% [markdown]
 # ### Load and Filter Data
+# [link to data](https://covid19.cog.sanger.ac.uk/submissions/release2/meyer_nikolic_covid_pbmc_raw.h5ad)
 
 # %%
 
@@ -124,15 +125,19 @@ adata
 
 # %%
 # pca on X written to X
-sc.tl.pca(adata)
+sc.tl.pca(adata, svd_solver='arpack', n_comps=50, random_state = 129)
+sc.pp.neighbors(adata, n_neighbors=20, n_pcs=40)
+sc.tl.umap(adata, random_state=42)
 
 
 # %%
 adata
 
 # %%
-sns.scatterplot(x = adata.obsm['X_pca'][:,0],y =  adata.obsm['X_pca'][:,1], hue = adata.obs.covid_severity)
-plt.show()
 
+sc.pl.embedding(adata, basis = 'X_umap', color='covid_severity')
+sc.pl.embedding(adata, basis = 'X_umap', color='smoker')
+sc.pl.embedding(adata, basis = 'X_pca', color='covid_severity')
+sc.pl.embedding(adata, basis = 'X_pca', color='smoker')
 
 # %%
