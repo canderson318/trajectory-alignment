@@ -4,47 +4,8 @@
 #\\\
 #\\\
 
-if(!dir.exists('logs')) dir.create('logs')
+# system("sbatch src/001-slurm.sh")
 
-if(FALSE&FALSE){
-
-slurm_cmd <- "#!/bin/bash
-
-#SBATCH --partition=amilan
-#SBATCH --ntasks=5
-#SBATCH --time=03:00:00
-#SBATCH --nodes=1
-#SBATCH --qos=normal
-
-#SBATCH --job-name=001-job
-
-#SBATCH --output=/projects/canderson2@xsede.org/trajectory-alignment/logs/001-slurm-%j.out
-#SBATCH --error=/projects/canderson2@xsede.org/trajectory-alignment/logs/001-slurm-%j.err
-
-#SBATCH --mail-type=ALL
-#SBATCH --mail-user=christian.anderson@cuanschutz.edu
-
-
-# --- Set working directory ---
-dir=\"/projects/canderson2@xsede.org/trajectory-alignment\"
-cd \"$dir\" || exit 1
-
-# --- Load Anaconda and activate environment ---
-module purge
-module load anaconda
-conda activate r4.4_env
-
-# --- Run R script ---
-R_SCRIPT=\"$dir/src/001-RA-CD4-trajectories.R\"
-cat \"$R_SCRIPT\"
-Rscript --vanilla \"$R_SCRIPT\"
-"
-  # write to file (text first, filename second)
-  writeLines(slurm_cmd, "src/001-slurm.sh")
-  
-  # RUN
-  system("sbatch src/001-slurm.sh")
-}
 
 #\\\
 #\\\
@@ -55,15 +16,22 @@ rm(list = ls()); gc()
 
 pacman::p_load(readr, dplyr, snakecase, magrittr, ggplot2, patchwork, slingshot,
     SingleCellExperiment, TrajectoryUtils, scran, scater, scuttle, SummarizedExperiment, harmony,
-    tidyr, tibble, stringr, zeallot,
+    tidyr, tibble, stringr, zeallot, parallel,doParallel,
     install = F)
 
-# wd <- readLines('.wd.txt')
-wd <- "/projects/canderson2@xsede.org/trajectory-alignment"
+# wd <- "/projects/canderson2@xsede.org/trajectory-alignment"
+# writeLines(wd,'~/.wd.txt')
+wd <- readLines('~/.wd.txt')
 setwd(wd)
 getwd()
 
 avail <- as.numeric(system('nproc', intern = T) )
+
+# Detect and use # of cores 
+cores <- avail - 1
+cl <- makeCluster(cores)
+registerDoParallel(cl)
+
 
 
 #\\\\
@@ -182,4 +150,6 @@ metadata(sce_y)$metadata$top_genes = top_genes_y
 #\\\\
 #\\\\
 
-qsave(list(sce_x,sce_y), "processed-data/sce-x-and-y.qs", preset = 'high')
+qs::qsave(list(sce_x,sce_y), "processed-data/sce-x-and-y.qs", preset = 'high')
+
+stopCluster(cl)
