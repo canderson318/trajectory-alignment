@@ -1,25 +1,34 @@
 name: traj-alignment
 channels:
   - conda-forge
-  - defaults
 dependencies:
+  - python=3.12
+
+  # Jupyter stack
   - ipython
   - ipykernel
-  - ipywidgets
   - jupyterlab
-  - jupyter_contrib_nbextensions
+  - ipywidgets
   - jupytext
-  - matplotlib
-  - nodejs
-  - pandas
   - pandoc
-  - pip
-  - pre-commit
-  - python
-  - pyyaml
-  - rpy2
+
+  # Scientific Python
+  - numpy >=2,<2.3.0
+  - pandas
   - scipy
-  - seaborn
   - scikit-learn
   - statsmodels
+  - matplotlib
+  - seaborn
   - tqdm
+
+  # Dev / workflow
+  - pre-commit
+  - pyyaml
+  - pip
+
+  # Interop
+  - rpy2
+
+  # Optional (only if needed)
+  - nodejs
