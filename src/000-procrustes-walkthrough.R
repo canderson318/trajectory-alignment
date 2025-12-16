@@ -2,21 +2,32 @@
 
 rm(list = ls()); gc()
 
-pacman::p_load(readr, dplyr, snakecase, magrittr, ggplot2, patchwork, slingshot, SingleCellExperiment, TrajectoryUtils, scater, SummarizedExperiment, tidyr, tibble, stringr)
+pacman::p_load(readr, dplyr, snakecase, magrittr, ggplot2, patchwork, slingshot, SingleCellExperiment, TrajectoryUtils, scater, SummarizedExperiment, tidyr, tibble, stringr, install = F)
 
-wd <- "~/Documents/personal/R stuff/traj-alignment/"
+library(myPackage)
+
+wd <- "/projects/canderson2@xsede.org/trajectory-alignment"
+writeLines(wd, '.wd.txt')
+
 setwd(wd)
+
+tmp_plot  <-  function( path = sprintf("%s/results/temp-plot.png", wd), ...){
+  temp_plot(path = path, ...)
+}
 
 # make raw-data directory 
 "raw-data" %>% 
   {if(!dir.exists(.)) dir.create(.)}
 
-# system("curl https://archive.ics.uci.edu/static/public/109/wine.zip --output wine.zip")
-# system("ls")
-# system("unzip wine.zip")
+if(!file.exists('raw-data/wine.data')){
+  system("curl https://archive.ics.uci.edu/static/public/109/wine.zip --output raw-data/wine.zip")
+  system("ls")
+  system("unzip raw-data/wine.zip -d raw-data")
+  system('rm raw-data/wine.zip')
+}
+
 system("cat raw-data/wine.data")
 system("cat raw-data/wine.names")
-system("ls")
 
 
 nms <- c("class",
@@ -172,7 +183,7 @@ obj$traj$curve_dfs <- list(a = get.curve.df(obj$traj$curves$a),
 # 
 # b_traj <- b+
 #   geom_path(data = obj$traj$curve_dfs$b, aes(PC1, PC2, color = lineage), fill = NA,color = "orange", linewidth = .7, alpha = 1)
-# ggsave("~/Documents/personal/R stuff/traj-alignment/results/Trajectories-points-w-traj.png", a_traj/b_traj , height = 8, width = 4)
+# ggsave("results/Trajectories-points-w-traj.png", a_traj/b_traj , height = 8, width = 4)
 gg_color_hue <- function(n) {
   hues = seq(15, 375, length = n + 1)
   hcl(h = hues, l = 65, c = 100)[1:n]
@@ -194,7 +205,7 @@ b_traj <- b_traj+
   geom_path(data = obj$traj$curve_dfs$b, aes(PC1, PC2, color = lineage), fill = NA,color = gg_color_hue(4)[1], linewidth = 1, alpha = .9)+
   labs(color = "")
 
-a_traj/b_traj 
+(a_traj/b_traj) %>% tmp_plot( plot = .)
 
 ggsave(sprintf("%s/results/Trajectories-points-w-traj-no-ellipse.png", wd), a_traj/b_traj , height = 8, width = 4)
 
@@ -247,7 +258,8 @@ b_to_a_traj_points_ellipses <- ggplot()+
   ggtitle("Trajectory Y aligned to X with points")+
   theme_bw()
 
-ggsave("~/Documents/personal/R stuff/traj-alignment/results/b-to-a-traj-points-ellpises.png", b_to_a_traj_points_ellipses , height = 8, width = 8)
+
+ggsave("results/b-to-a-traj-points-ellpises.png", b_to_a_traj_points_ellipses , height = 8, width = 8)
 
 b_to_a_traj_points <- ggplot()+
 
@@ -269,7 +281,7 @@ b_to_a_traj_points <- ggplot()+
   ggtitle("Trajectory Y aligned to X with points")+
   theme_bw()
 
-ggsave("~/Documents/personal/R stuff/traj-alignment/results/b-to-a-traj-points-ellpises.png", b_to_a_traj_points_ellipses , height = 8, width = 8)
+ggsave("results/b-to-a-traj-points-ellpises.png", b_to_a_traj_points_ellipses , height = 8, width = 8)
 
 b_to_a_points_ellipses <- ggplot()+
 
@@ -285,7 +297,7 @@ b_to_a_points_ellipses <- ggplot()+
   ggtitle("Trajectory Y aligned to X with points")+
   theme_bw()
 
-ggsave("~/Documents/personal/R stuff/traj-alignment/results/b-to-a-points-ellpises.png", b_to_a_points_ellipses , height = 8, width = 8)
+ggsave("results/b-to-a-points-ellpises.png", b_to_a_points_ellipses , height = 8, width = 8)
 
 
 b_to_a_traj_ellipses <- ggplot()+
@@ -312,7 +324,7 @@ b_to_a_traj_ellipses <- ggplot()+
   ggtitle("Trajectory Y aligned to X with point ellipses")+
   theme_bw()
 
-ggsave("~/Documents/personal/R stuff/traj-alignment/results/b-to-a-traj-ellpises.png", b_to_a_traj_ellipses , height = 8, width = 8)
+ggsave("results/b-to-a-traj-ellpises.png", b_to_a_traj_ellipses , height = 8, width = 8)
 
 
 b_to_a_ellipses <- ggplot()+
@@ -329,7 +341,7 @@ b_to_a_ellipses <- ggplot()+
   ggtitle("Y aligned to X")+
   theme_bw()
 
-ggsave("~/Documents/personal/R stuff/traj-alignment/results/b-to-a-ellpises.png", b_to_a_ellipses , height = 8, width = 8)
+ggsave("results/b-to-a-ellpises.png", b_to_a_ellipses , height = 8, width = 8)
 
 b_to_a_traj <- ggplot()+
   
@@ -364,10 +376,13 @@ b_to_a_traj <- ggplot()+
   theme_bw()
 
 
-ggsave("~/Documents/personal/R stuff/traj-alignment/results/b-to-a-traj.png", b_to_a_traj , height = 8, width = 8)
+ggsave("results/b-to-a-traj.png", b_to_a_traj , height = 8, width = 8)
 
 p <- (a_traj/b_traj )|(b_to_a_traj+theme(aspect.ratio = 1))
-ggsave("~/Documents/personal/R stuff/traj-alignment/results/grfp-fig.pdf", p, height = 5, width = 10)
+ggsave("results/grfp-fig.pdf", p, height = 5, width = 10)
 
 
-qs::qsave(obj,"processed-data/obj001.qs")
+"processed-data" %>% 
+  {if(! dir.exists(.)) dir.create(.)}
+
+# qs::qsave(obj,"processed-data/obj001.qs")
