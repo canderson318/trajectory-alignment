@@ -7,10 +7,10 @@
 #SBATCH --nodes=1
 #SBATCH --qos=normal
 
-#SBATCH --job-name=001-job
+#SBATCH --job-name=002-job
 
-#SBATCH --output=/projects/canderson2@xsede.org/trajectory-alignment/logs/001-slurm-%j.out
-#SBATCH --error=/projects/canderson2@xsede.org/trajectory-alignment/logs/001-slurm-%j.err
+#SBATCH --output=/projects/canderson2@xsede.org/trajectory-alignment/logs/002-slurm-%j.out
+#SBATCH --error=/projects/canderson2@xsede.org/trajectory-alignment/logs/002-slurm-%j.err
 
 #SBATCH --mail-type=ALL
 #SBATCH --mail-user=christian.anderson@cuanschutz.edu
@@ -30,7 +30,7 @@ module load anaconda
 conda activate r4.4_env
 
 # --- Run R script ---
-rel_script_pth="src/001-RA-CD4-munging.R"
+rel_script_pth="src/002-trajectory-inference.R"
 R_SCRIPT="$dir/$rel_script_pth"
 cat "$R_SCRIPT"
 Rscript --vanilla "$R_SCRIPT"
