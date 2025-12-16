@@ -58,7 +58,8 @@ pacman::p_load(readr, dplyr, snakecase, magrittr, ggplot2, patchwork, slingshot,
     tidyr, tibble, stringr, zeallot,
     install = F)
 
-wd <- readLines('.wd.txt')
+# wd <- readLines('.wd.txt')
+wd <- "/projects/canderson2@xsede.org/trajectory-alignment"
 setwd(wd)
 getwd()
 
