@@ -5,7 +5,9 @@
 #\\\
 rm(list = ls()); gc()
 
-pacman::p_load(readr, dplyr, snakecase, magrittr, ggplot2, patchwork, slingshot, SingleCellExperiment, TrajectoryUtils, scater, SummarizedExperiment, tidyr, tibble, stringr, install = F)
+pacman::p_load(readr, dplyr, snakecase, magrittr, ggplot2, patchwork, slingshot, SingleCellExperiment, TrajectoryUtils,
+   scater, SummarizedExperiment, tidyr, tibble, stringr, zeallot,
+  install = F)
 
 library(myPackage)
 
@@ -95,23 +97,23 @@ ab_pcs <- ggplot(x, aes(PC1, PC2, color = wine[,1, drop = TRUE] %>% factor()))+
 # \\\
 
 set.seed(18)
-# # subset columnwise
-# a_cols <- sample(2:14, floor(14/2))
-# b_cols <- setdiff(2:14, a_cols)
+# subset columnwise
+a_cols <- sample(2:14, floor(14/2))
+b_cols <- setdiff(2:14, a_cols)
 
-# subset columns with some shared features
-a_cols <- 2:10
-b_cols <- 6:14
+# # subset columns with some shared features
+# a_cols <- 2:10
+# b_cols <- 6:14
 
 b_rows <- a_rows <- 1:nrow(wine)
 
-# subsample rowwise
-a_rows <- sample(1:nrow(wine), floor(nrow(wine)/2))
-b_rows <- setdiff(1:nrow(wine), a_rows)
+# # subsample rowwise
+# a_rows <- sample(1:nrow(wine), floor(nrow(wine)/2))
+# b_rows <- setdiff(1:nrow(wine), a_rows)
 
-# bootstrap
-a_rows <- sample(a_rows, 200, T)
-b_rows <- sample(b_rows, 200, T)
+# # bootstrap
+# a_rows <- sample(a_rows, 200, T)
+# b_rows <- sample(b_rows, 200, T)
 
 obj$data$a <- obj$data$scaled[a_rows,a_cols]
 obj$data$b <- obj$data$scaled[b_rows,b_cols]
@@ -231,13 +233,19 @@ cols <- seq(2,  do.call(min, lapply(obj$traj$curve_dfs, ncol)) ) # exclude 'line
 
 X <- obj$traj$curve_dfs$a[,cols] %>% as.matrix() 
 Y <- obj$traj$curve_dfs$b[,cols] %>% as.matrix()
-# \\\
+
+# # Vegan implementation
+# procrust <- vegan::procrustes(X = X, Y = Y)
+# Y_aligned <- procrust$Yrot
+
+# obj$procrust <- procrust
+# (proc_test <- vegan::protest(X, Y))
+
+
 # \\\
 # Resample Curves if dims don't match
 # \\\
-# \\\
 
-curve = X 
 resample_curve <- function(curve, minRowDim){
   
   # cumulative arc length
@@ -265,6 +273,7 @@ resample_curve <- function(curve, minRowDim){
   return(curve_interp)
 }
 
+# only resample if needed-- when rows don't match up
 if(nrow(X)!=nrow(Y)){
   minRowDim = min(nrow(X), nrow(Y))
   X_new = resample_curve(X, minRowDim)
@@ -272,21 +281,90 @@ if(nrow(X)!=nrow(Y)){
 }
 
 
-# # Vegan implementation
-# procrust <- vegan::procrustes(X = X, Y = Y)
-# Y_aligned <- procrust$Yrot
+my_procrustes <- function(X, Y, symmetric = FALSE, scale = FALSE) {
 
-# obj$procrust <- procrust
-# (proc_test <- vegan::protest(X, Y))
+  # ---- helpers ----
+  frob2 <- function(M) sum(M^2)            # squared Frobenius norm
+  frob  <- function(M) sqrt(frob2(M)) # Frobenius norm
 
+  # ---- store originals ----
+  X_raw <- X
+  Y_raw <- Y
 
+  muX <- colMeans(X_raw)
+  muY <- colMeans(Y_raw)
 
-my_procrustes <- function(X,Y){
+  # ---- center ----
+  Xc <- sweep(X_raw, 2, muX, "-")
+  Yc <- sweep(Y_raw, 2, muY, "-")
 
+  nx <- frob(Xc)
+  ny <- frob(Yc)
+
+  # ---- normalize for estimation (symmetric Procrustes) ----
+  if (symmetric) {
+    Xn <- Xc / nx
+    Yn <- Yc / ny
+  } else {
+    Xn <- Xc
+    Yn <- Yc
+  }
+
+  # ---- estimate rotation from cross-covariance ----
+  M <- t(Yn) %*% Xn
+  c(s,U,V) %<-% svd(M)
+
+  R <- U %*% t(V)
+
+  # ---- scale factor (in normalized space) ----
+  c_sym <- 1
+  if (scale) {
+    c_sym <- sum(s)
+  }
+
+  # ---- apply transform BACK IN ORIGINAL SPACE ----
+  #
+  # Y_aligned = muX + (nx / ny) * c_sym * (Y_raw - muY) %*% R
+  #
+  if (symmetric){
+    total_scale <-  (nx / ny) * c_sym 
+  }else{
+    total_scale  <- c_sym
+  }
+
+  # rotate Y to X normalized space with R
+  Y_aligned  <-  Yc %*% R
+  # rescale Y back to X size
+  Y_aligned <- total_scale * Y_aligned
+  # recenter means to X means
+  Y_aligned <- sweep(Y_aligned,2,muX,"+")
+
+  # ---- residuals (computed in original space) ----
+  RSS <- sum((Y_aligned - X_raw)^2)
+  RMSE <- sqrt(mean((Y_aligned - X_raw)^2))
+
+  list(
+    rotation = R,
+    scale = total_scale,
+    X_mean = muX,
+    Y_mean = muY,
+
+    Y_aligned = Y_aligned,
+
+    X_centered = Xc,
+    Y_centered = Yc,
+    X_normalized = Xn,
+    Y_normalized = Yn,
+
+    singular_values = s,
+
+    RSS = RSS,
+    RMSE = RMSE
+  )
 }
 
-
-nrow(X)
+res = my_procrustes(X,Y, symmetric = TRUE, scale = TRUE)
+res[c('RSS', 'RMSE')]
 
 #\\\\
 #\\\\
@@ -294,44 +372,37 @@ nrow(X)
 #\\\\
 #\\\\
 
+
 X_d <- as.data.frame(X)
-Y_matched <- as.data.frame(Y_aligned )
+Y_aligned <- as.data.frame(res[['Y_aligned']] )
 
-colnames(Y_matched) <- paste0("aligned_", cols-1)
+colnames(X_d) <- paste0("PC", cols-1)
+colnames(Y_aligned) <- paste0("aligned_", cols-1)
 
 
-b_to_a_traj_points <- ggplot()+
+(
+  ggplot()+
+    geom_path(data =X_d %>% mutate(lineage = "reference"),      
+      aes(PC1, PC2, color = lineage), linewidth = 2, alpha = .5)+
+    
+    geom_path(data = Y_aligned %>% mutate(lineage = "aligned"),
+    aes(aligned_1, aligned_2, color = lineage), linewidth = 2, alpha = .5)+
 
-  geom_point(data = obj$reducedDims$pcs$a %>% bind_cols(class_a = obj$data$orig$class[a_rows]) ,aes(PC1, PC2, color = class_a), alpha = .3)+
-  
-  ggnewscale::new_scale_color()+
-
-  geom_point(data = obj$reducedDims$pcs$b %>% bind_cols(class_b = obj$data$orig$class[b_rows]) ,aes(PC1, PC2, color = class_b), alpha = .3)+
-  
-  ggnewscale::new_scale_color()+
-
-  geom_path(data =X_d %>% mutate(lineage = "reference"),      aes(PC1, PC2, color = lineage),
-            linewidth = 2, alpha = .5)+
-  
-  geom_path(data = Y_matched %>% mutate(lineage = "aligned"), aes(aligned_1, aligned_2, color = lineage),
-            linewidth = 2, alpha = .5)+
-
-  scale_color_hue()+
-  ggtitle("Trajectory Y aligned to X with points")+
-  theme_bw()
-
-b_to_a_traj_points %>% tmp_plot(plot = .)
+    scale_color_hue()+
+    ggtitle("Trajectory Y aligned to X with points")+
+    theme_bw()
+  ) %>%  tmp_plot(plot = .)
 
 
 
 b_to_a_traj <- ggplot()+
   
-  geom_point(data = obj$reducedDims$pcs$a %>%
+  geom_point(data = (obj$reducedDims$pcs$a )%>%
                data.frame() %>% mutate(lineage  = "reference") %>% distinct(),
              aes(PC1, PC2, color = lineage),
              alpha = .7)+
   
-  geom_point(data = obj$reducedDims$pcs$b %*% procrust$rotation %>%
+  geom_point(data = ((obj$reducedDims$pcs$b)%*%res[['rotation']] )%>%
                data.frame() %>% mutate(lineage  = "aligned") %>% distinct(),
              aes(X1,X2, color = lineage),
              alpha = .7)+
@@ -340,7 +411,7 @@ b_to_a_traj <- ggplot()+
             aes(PC1, PC2, color = lineage),
             linewidth = 2, alpha = .9)+
   
-  geom_path(data = Y_matched %>% mutate(lineage = "aligned"), 
+  geom_path(data = Y_aligned %>% mutate(lineage = "aligned"), 
             aes(aligned_1, aligned_2, color = lineage),
             linewidth = 2, alpha = .9)+
   
@@ -355,10 +426,11 @@ b_to_a_traj <- ggplot()+
     )
   )) +
   theme_bw()
+
 b_to_a_traj%>% tmp_plot(plot = .)
 
 p <- (a_traj/b_traj )|(b_to_a_traj+theme(aspect.ratio = 1))
 
-p%>% tmp_plot(plot = .)
+p%>% tmp_plot(plot = ., height = 6, width =10)
 
 
