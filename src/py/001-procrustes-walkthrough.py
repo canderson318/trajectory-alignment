@@ -27,7 +27,7 @@ from sklearn.decomposition import PCA
 # ### Set Working DirectorY
 
 # %%
-os.chdir(pth.home() / 'traj-alignment')
+os.chdir(pth.home() / 'dev/trajectory-alignment')
 
 # %% [markdown]
 # ### Load Data

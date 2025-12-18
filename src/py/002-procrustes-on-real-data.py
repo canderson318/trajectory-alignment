@@ -32,7 +32,7 @@ import scanpy as sc
 # ### Set Working Directory
 
 # %%
-os.chdir(pth.home() / 'traj-alignment')
+os.chdir(pth.home() / 'dev/trajectory-alignment')
 
 # %% [markdown]
 # ### Load and Filter Data
