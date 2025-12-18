@@ -12,7 +12,7 @@ pacman::p_load(readr, dplyr, snakecase, magrittr, ggplot2, patchwork, slingshot,
 library(myPackage)
 
 # wd <- "/projects/canderson2@xsede.org/trajectory-alignment"
-# wd <- "/Users/canderson/trajectory-alignment"
+# wd <- "/Users/canderson/dev/trajectory-alignment"
 # writeLines(wd, '~/.wd.txt')
 
 wd <- readLines('~/.wd.txt')
